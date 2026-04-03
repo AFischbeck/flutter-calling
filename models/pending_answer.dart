@@ -1,6 +1,6 @@
-import 'package:webrtc_flutter_demo/models/result.dart';
-import 'package:webrtc_flutter_demo/helpers/stream_awaiter.dart';
-import 'package:webrtc_flutter_demo/services/transient/signaling_payload.dart';
+import 'result.dart';
+import '../helpers/stream_awaiter.dart';
+import 'signaling_payload.dart';
 
 class PendingAnswer {
   PendingAnswer({

@@ -1,5 +1,5 @@
 import 'package:flutter_webrtc/flutter_webrtc.dart';
-import 'package:webrtc_flutter_demo/models/result.dart';
+import '../models/result.dart';
 
 const List<Map<String, dynamic>> kDefaultIceServers = [
   {'urls': 'stun:stun1.l.google.com:19302'},

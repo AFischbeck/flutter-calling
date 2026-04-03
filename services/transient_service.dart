@@ -1,5 +1,5 @@
-import 'package:webrtc_flutter_demo/models/result.dart';
-import 'package:webrtc_flutter_demo/services/transient/signaling_payload.dart';
+import '../models/result.dart';
+import '../models/signaling_payload.dart';
 
 class TransientConnectionInfo {
   const TransientConnectionInfo({required this.existingPeerIds});

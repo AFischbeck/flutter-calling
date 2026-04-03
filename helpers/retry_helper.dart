@@ -1,4 +1,4 @@
-import 'package:webrtc_flutter_demo/models/result.dart';
+import '../models/result.dart';
 
 Future<Result<T>> withRetry<T>(
   Future<Result<T>> Function() operation,

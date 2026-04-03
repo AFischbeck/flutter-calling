@@ -2,14 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
-import 'package:webrtc_flutter_demo/helpers/retry_helper.dart';
-import 'package:webrtc_flutter_demo/helpers/webrtc_helpers.dart';
-import 'package:webrtc_flutter_demo/models/peer.dart';
-import 'package:webrtc_flutter_demo/models/pending_answer.dart';
-import 'package:webrtc_flutter_demo/models/result.dart';
-import 'package:webrtc_flutter_demo/services/ice_candidate_manager.dart';
-import 'package:webrtc_flutter_demo/services/transient/signaling_payload.dart';
-import 'package:webrtc_flutter_demo/services/transient/transient_service.dart';
+import 'helpers/retry_helper.dart';
+import 'helpers/webrtc_helpers.dart';
+import 'models/peer.dart';
+import 'models/pending_answer.dart';
+import 'models/result.dart';
+import 'services/ice_candidate_manager.dart';
+import 'models/signaling_payload.dart';
+import 'services/transient_service.dart';
 
 class WebRtcManager {
   WebRtcManager({this.notifyWarning, this.notifyError});

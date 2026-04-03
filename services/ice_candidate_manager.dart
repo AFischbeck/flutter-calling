@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:collection';
 
 import 'package:flutter_webrtc/flutter_webrtc.dart';
-import 'package:webrtc_flutter_demo/services/transient/signaling_payload.dart';
-import 'package:webrtc_flutter_demo/services/transient/transient_service.dart';
+import '../models/signaling_payload.dart';
+import 'transient_service.dart';
 
 class IceCandidateManager {
   IceCandidateManager({

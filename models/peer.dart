@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_webrtc/flutter_webrtc.dart';
-import 'package:webrtc_flutter_demo/helpers/webrtc_helpers.dart';
+import '../helpers/webrtc_helpers.dart';
 
 class Peer {
   Peer({

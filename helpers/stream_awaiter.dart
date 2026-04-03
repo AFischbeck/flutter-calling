@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:webrtc_flutter_demo/models/result.dart';
-import 'package:webrtc_flutter_demo/helpers/timeout_handler.dart';
+import '../models/result.dart';
+import 'timeout_handler.dart';
 
 class StreamAwaiter<T> {
   StreamAwaiter({

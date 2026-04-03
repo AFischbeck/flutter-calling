@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:webrtc_flutter_demo/models/result.dart';
+import '../models/result.dart';
 
 class MediaDeviceConfig {
   final bool audio;
