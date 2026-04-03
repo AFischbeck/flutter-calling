@@ -101,7 +101,7 @@ class MediaDeviceService {
 
     if (config != null) _config = config;
 
-    if (Platform.isAndroid || Platform.isIOS) {
+    if (Platform.isAndroid) {
       final permissionResult = await _requestPermissions();
       if (permissionResult != null) {
         return Failure(permissionResult, ErrorSource.mediaDevice);
