@@ -1,9 +1,10 @@
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import '../models/ice_server_config.dart';
 import '../models/result.dart';
 
-const List<Map<String, dynamic>> kDefaultIceServers = [
-  {'urls': 'stun:stun1.l.google.com:19302'},
-  {'urls': 'stun:stun2.l.google.com:19302'},
+const List<IceServerConfig> kDefaultStunServers = [
+  IceServerConfig(urls: ['stun:stun1.l.google.com:19302']),
+  IceServerConfig(urls: ['stun:stun2.l.google.com:19302']),
 ];
 
 const _errorMap = {
@@ -24,11 +25,12 @@ Failure<T> _mapError<T>(Object e) {
 }
 
 Future<Result<RTCPeerConnection>> initializePeerConnection(
-  MediaStream localStream,
-) async {
+  MediaStream localStream, {
+  required List<Map<String, dynamic>> iceServers,
+}) async {
   try {
     final peerConnection = await createPeerConnection({
-      'iceServers': kDefaultIceServers,
+      'iceServers': iceServers,
     });
     await updateLocalStream(localStream, peerConnection);
 

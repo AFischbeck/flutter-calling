@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'helpers/retry_helper.dart';
 import 'helpers/webrtc_helpers.dart';
+import 'models/ice_server_config.dart';
 import 'models/peer.dart';
 import 'models/pending_answer.dart';
 import 'models/result.dart';
@@ -12,8 +13,20 @@ import 'models/signaling_payload.dart';
 import 'services/transient_service.dart';
 
 class WebRtcManager {
-  WebRtcManager({this.notifyWarning, this.notifyError});
+  WebRtcManager({
+    List<IceServerConfig>? stunServers,
+    List<IceServerConfig>? turnServers,
+    this.notifyWarning,
+    this.notifyError,
+  }) : _iceServers = [
+         ...(stunServers != null && stunServers.isNotEmpty
+                 ? stunServers
+                 : kDefaultStunServers)
+             .map((s) => s.toMap()),
+         if (turnServers != null) ...turnServers.map((s) => s.toMap()),
+       ];
 
+  final List<Map<String, dynamic>> _iceServers;
   final void Function(String)? notifyWarning;
   final void Function(String)? notifyError;
 
@@ -116,7 +129,10 @@ class WebRtcManager {
   ) async {
     final String myId = transientService.id;
 
-    final peerConnectionResult = await initializePeerConnection(localStream);
+    final peerConnectionResult = await initializePeerConnection(
+      localStream,
+      iceServers: _iceServers,
+    );
     if (peerConnectionResult is Failure) return peerConnectionResult;
 
     final RTCPeerConnection peerConnection =
@@ -159,7 +175,10 @@ class WebRtcManager {
     MediaStream localStream,
     Stream<MediaStream?> localStreamChanges,
   ) async {
-    final peerConnectionResult = await initializePeerConnection(localStream);
+    final peerConnectionResult = await initializePeerConnection(
+      localStream,
+      iceServers: _iceServers,
+    );
     if (peerConnectionResult is Failure) return peerConnectionResult;
 
     final RTCPeerConnection peerConnection =
