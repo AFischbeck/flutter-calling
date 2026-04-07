@@ -107,6 +107,7 @@ class WebRtcManager {
         onAnswerReceived: _onAnswerReceived,
         onFinalTimeout: (id) {
           debugPrint('Timed out while waiting for answer from: $id');
+          _removePeer(id);
         },
         sendOffer: sendOfferWithRetries,
 
@@ -274,10 +275,9 @@ class WebRtcManager {
   }
 
   Future<void> dispose() async {
-    final peersToDispose = _peers.values.toList();
-    _peers.clear();
-    for (final connectedPeer in peersToDispose) {
-      await connectedPeer.dispose();
+    final peerIds = _peers.keys.toList();
+    for (final peerId in peerIds) {
+      await _removePeer(peerId);
     }
     for (final pendingAnswer in _pendingAnswers.toList()) {
       await pendingAnswer.dispose();
