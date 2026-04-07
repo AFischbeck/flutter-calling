@@ -163,6 +163,7 @@ class WebRtcManager {
       return offerSendResult;
     }
 
+    await _removePeer(peerId);
     _peers[peerId] = Peer(
       peerConnection: peerConnection,
       localStreamChanges: localStreamChanges,
@@ -243,6 +244,7 @@ class WebRtcManager {
       return Failure(CallError.peerConnectionFailed, ErrorSource.webRtc);
     }
 
+    await _removePeer(offer.from);
     _peers[offer.from] = peer;
     _peersController.add(Map.unmodifiable(_peers));
 
