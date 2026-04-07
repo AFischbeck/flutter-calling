@@ -253,6 +253,7 @@ class WebRtcManager {
     final peer = _peers.remove(peerId);
     if (peer == null) return;
 
+    _iceCandidateManager.clearPendingCandidates(peerId);
     await peer.dispose();
     _peersController.add(Map.unmodifiable(_peers));
   }

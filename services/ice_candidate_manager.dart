@@ -71,6 +71,10 @@ class IceCandidateManager {
     }
   }
 
+  void clearPendingCandidates(String peerId) {
+    _pendingCandidates.remove(peerId);
+  }
+
   Future<void> dispose() async {
     await _inboundSubscription?.cancel();
     _pendingCandidates.clear();
