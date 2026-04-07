@@ -14,6 +14,7 @@ class Peer {
     });
 
     peerConnection.onTrack = (event) {
+      remoteStream?.dispose();
       remoteStream = event.streams.firstOrNull;
       _remoteStreamController.add(event.streams.firstOrNull);
     };

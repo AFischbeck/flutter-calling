@@ -260,13 +260,17 @@ class WebRtcManager {
     final peer = _peers[answer.from];
     if (peer == null) return;
 
-    await peer.peerConnection.setRemoteDescription(
-      RTCSessionDescription(answer.sdp, 'answer'),
-    );
-    await _iceCandidateManager.flushPendingCandidates(
-      peer.peerConnection,
-      answer.from,
-    );
+    try {
+      await peer.peerConnection.setRemoteDescription(
+        RTCSessionDescription(answer.sdp, 'answer'),
+      );
+      await _iceCandidateManager.flushPendingCandidates(
+        peer.peerConnection,
+        answer.from,
+      );
+    } catch (e) {
+      await _removePeer(answer.from);
+    }
   }
 
   Future<void> dispose() async {

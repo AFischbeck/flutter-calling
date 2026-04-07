@@ -39,7 +39,7 @@ class StreamAwaiter<T> {
     if (_disposed) return;
     if (result is Failure) {
       onOperationFailed?.call('Stream awaiter operation failed.');
-      dispose();
+      await dispose();
       return;
     }
 
@@ -50,10 +50,10 @@ class StreamAwaiter<T> {
     _handler = TimeoutHandler(onTimeout: _onTimeout, timeout: timeout);
   }
 
-  void _handleEvent(T event) {
+  Future<void> _handleEvent(T event) async {
     if (_disposed) return;
     onEvent(event);
-    dispose();
+    await dispose();
   }
 
   Future<void> _onTimeout() async {
