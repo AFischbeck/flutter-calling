@@ -35,7 +35,6 @@ Future<Result<RTCPeerConnection>> initializePeerConnection(
 
     return Success(peerConnection);
   } catch (e) {
-    await peerConnection?.close();
     await peerConnection?.dispose();
     return _mapError(e);
   }

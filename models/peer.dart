@@ -14,9 +14,8 @@ class Peer {
     });
 
     peerConnection.onTrack = (event) {
-      remoteStream?.dispose();
       remoteStream = event.streams.firstOrNull;
-      _remoteStreamController.add(event.streams.firstOrNull);
+      _remoteStreamController.add(remoteStream);
     };
 
     peerConnection.onConnectionState = (state) {
@@ -37,8 +36,6 @@ class Peer {
       _remoteStreamController.stream;
 
   Future<void> dispose() async {
-    await remoteStream?.dispose();
-    await peerConnection.close();
     await peerConnection.dispose();
     await _localStreamSubscription.cancel();
     await _remoteStreamController.close();

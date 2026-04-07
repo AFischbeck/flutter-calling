@@ -144,7 +144,6 @@ class WebRtcManager {
 
     final offerCreationResult = await createOffer(peerConnection);
     if (offerCreationResult is Failure) {
-      await peerConnection.close();
       await peerConnection.dispose();
       return offerCreationResult;
     }
@@ -158,7 +157,6 @@ class WebRtcManager {
 
     final offerSendResult = await transientService.sendPayload('offer', offer);
     if (offerSendResult is Failure) {
-      await peerConnection.close();
       await peerConnection.dispose();
       return offerSendResult;
     }
@@ -205,7 +203,6 @@ class WebRtcManager {
       if (peer != null) {
         await peer.dispose();
       } else {
-        await peerConnection.close();
         await peerConnection.dispose();
       }
       return Failure(CallError.peerConnectionFailed, ErrorSource.webRtc);
