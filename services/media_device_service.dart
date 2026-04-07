@@ -130,6 +130,7 @@ class MediaDeviceService {
       return const Failure(CallError.notRunning, ErrorSource.mediaDevice);
     }
     _stopTracks();
+    _localStream?.dispose();
     _localStream = null;
     _state = MediaDeviceState.stopped;
     _streamController.add(null);
@@ -258,8 +259,9 @@ class MediaDeviceService {
     Map<String, dynamic> constraints,
     String kind,
   ) async {
+    MediaStream? tempStream;
     try {
-      final tempStream = await navigator.mediaDevices.getUserMedia(constraints);
+      tempStream = await navigator.mediaDevices.getUserMedia(constraints);
       final newTrack = tempStream.getTracks().first;
 
       final oldTrack = _localStream!
@@ -275,8 +277,10 @@ class MediaDeviceService {
       await _localStream!.addTrack(newTrack);
       _streamController.add(_localStream);
 
+      tempStream.dispose();
       return const Success(null);
     } catch (e) {
+      tempStream?.dispose();
       final message = e.toString().toLowerCase();
       final error =
           _errorMap.entries

@@ -35,9 +35,11 @@ class Peer {
   Stream<MediaStream?> get remoteStreamChanges =>
       _remoteStreamController.stream;
 
-  void dispose() {
-    peerConnection.close();
-    _localStreamSubscription.cancel();
-    _remoteStreamController.close();
+  Future<void> dispose() async {
+    await remoteStream?.dispose();
+    await peerConnection.close();
+    await peerConnection.dispose();
+    await _localStreamSubscription.cancel();
+    await _remoteStreamController.close();
   }
 }

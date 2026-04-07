@@ -143,7 +143,8 @@ class WebRtcManager {
 
     final offerCreationResult = await createOffer(peerConnection);
     if (offerCreationResult is Failure) {
-      peerConnection.dispose();
+      await peerConnection.close();
+      await peerConnection.dispose();
       return offerCreationResult;
     }
 
@@ -156,7 +157,8 @@ class WebRtcManager {
 
     final offerSendResult = await transientService.sendPayload('offer', offer);
     if (offerSendResult is Failure) {
-      peerConnection.dispose();
+      await peerConnection.close();
+      await peerConnection.dispose();
       return offerSendResult;
     }
 
@@ -187,19 +189,31 @@ class WebRtcManager {
     peerConnection.onIceCandidate = _iceCandidateManager
         .createOnIceCandidateCallback(transientService.id, offer.from);
 
-    final peer = Peer(
-      peerConnection: peerConnection,
-      localStreamChanges: localStreamChanges,
-      onDisconnected: () => _removePeer(offer.from),
-    );
-    await peer.peerConnection.setRemoteDescription(
-      RTCSessionDescription(offer.sdp, 'offer'),
-    );
-    _peers[offer.from] = peer;
-    _peersController.add(Map.unmodifiable(_peers));
+    Peer? peer;
+    try {
+      peer = Peer(
+        peerConnection: peerConnection,
+        localStreamChanges: localStreamChanges,
+        onDisconnected: () => _removePeer(offer.from),
+      );
+      await peer.peerConnection.setRemoteDescription(
+        RTCSessionDescription(offer.sdp, 'offer'),
+      );
+    } catch (e) {
+      if (peer != null) {
+        await peer.dispose();
+      } else {
+        await peerConnection.close();
+        await peerConnection.dispose();
+      }
+      return Failure(CallError.peerConnectionFailed, ErrorSource.webRtc);
+    }
 
     final createAnswerResult = await createAnswer(peerConnection);
-    if (createAnswerResult is Failure) return createAnswerResult;
+    if (createAnswerResult is Failure) {
+      await peer.dispose();
+      return createAnswerResult;
+    }
     final RTCSessionDescription rtcSessionDescription =
         (createAnswerResult as Success).value;
 
@@ -213,21 +227,32 @@ class WebRtcManager {
       'answer',
       answer,
     );
-    if (sendAnswerResult is Failure) return sendAnswerResult;
+    if (sendAnswerResult is Failure) {
+      await peer.dispose();
+      return sendAnswerResult;
+    }
 
-    await _iceCandidateManager.flushPendingCandidates(
-      peerConnection,
-      offer.from,
-    );
+    try {
+      await _iceCandidateManager.flushPendingCandidates(
+        peerConnection,
+        offer.from,
+      );
+    } catch (e) {
+      await peer.dispose();
+      return Failure(CallError.peerConnectionFailed, ErrorSource.webRtc);
+    }
+
+    _peers[offer.from] = peer;
+    _peersController.add(Map.unmodifiable(_peers));
 
     return Success(null);
   }
 
-  void _removePeer(String peerId) {
+  Future<void> _removePeer(String peerId) async {
     final peer = _peers.remove(peerId);
     if (peer == null) return;
 
-    peer.dispose();
+    await peer.dispose();
     _peersController.add(Map.unmodifiable(_peers));
   }
 
@@ -244,16 +269,19 @@ class WebRtcManager {
     );
   }
 
-  void dispose() {
-    for (final connectedPeer in _peers.values) {
-      connectedPeer.dispose();
+  Future<void> dispose() async {
+    final peersToDispose = _peers.values.toList();
+    _peers.clear();
+    for (final connectedPeer in peersToDispose) {
+      await connectedPeer.dispose();
     }
     for (final pendingAnswer in _pendingAnswers.toList()) {
-      pendingAnswer.dispose();
+      await pendingAnswer.dispose();
     }
-    _offerSubscription?.cancel();
-    _peerDisconnectedSubscription?.cancel();
-    _iceCandidateManager.dispose();
-    _peersController.close();
+    _pendingAnswers.clear();
+    await _offerSubscription?.cancel();
+    await _peerDisconnectedSubscription?.cancel();
+    await _iceCandidateManager.dispose();
+    await _peersController.close();
   }
 }

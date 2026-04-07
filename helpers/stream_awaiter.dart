@@ -59,7 +59,7 @@ class StreamAwaiter<T> {
   Future<void> _onTimeout() async {
     if (_retryCount >= maxRetries) {
       onFinalTimeout();
-      dispose();
+      await dispose();
       return;
     }
 
@@ -69,12 +69,12 @@ class StreamAwaiter<T> {
     await _start();
   }
 
-  void dispose() {
+  Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
     _handler?.dispose();
     _handler = null;
-    _subscription?.cancel();
+    await _subscription?.cancel();
     _subscription = null;
     onDispose?.call();
   }

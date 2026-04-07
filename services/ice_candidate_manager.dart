@@ -71,8 +71,8 @@ class IceCandidateManager {
     }
   }
 
-  void dispose() {
-    _inboundSubscription?.cancel();
+  Future<void> dispose() async {
+    await _inboundSubscription?.cancel();
     _pendingCandidates.clear();
   }
 }

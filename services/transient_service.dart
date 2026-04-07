@@ -14,5 +14,5 @@ abstract class TransientService {
   Stream<SignalingSdp> get answerStream;
   Stream<IceCandidatePayload> get iceCandidateStream;
   Stream<String> get peerDisconnectedStream;
-  void dispose();
+  Future<void> dispose();
 }
