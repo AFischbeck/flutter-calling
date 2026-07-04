@@ -34,5 +34,5 @@ class PendingAnswer {
   final String peerId;
   late final StreamAwaiter<SignalingSdp> _awaiter;
 
-  void dispose() => _awaiter.dispose();
+  Future<void> dispose() => _awaiter.dispose();
 }

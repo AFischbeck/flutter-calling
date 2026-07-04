@@ -28,14 +28,14 @@ Future<Result<RTCPeerConnection>> initializePeerConnection(
   MediaStream localStream, {
   required List<Map<String, dynamic>> iceServers,
 }) async {
+  RTCPeerConnection? peerConnection;
   try {
-    final peerConnection = await createPeerConnection({
-      'iceServers': iceServers,
-    });
+    peerConnection = await createPeerConnection({'iceServers': iceServers});
     await updateLocalStream(localStream, peerConnection);
 
     return Success(peerConnection);
   } catch (e) {
+    await peerConnection?.dispose();
     return _mapError(e);
   }
 }

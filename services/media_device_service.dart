@@ -101,7 +101,7 @@ class MediaDeviceService {
 
     if (config != null) _config = config;
 
-    if (Platform.isAndroid || Platform.isIOS) {
+    if (Platform.isAndroid) {
       final permissionResult = await _requestPermissions();
       if (permissionResult != null) {
         return Failure(permissionResult, ErrorSource.mediaDevice);
@@ -125,11 +125,12 @@ class MediaDeviceService {
     }
   }
 
-  Result stopMediaDevices() {
+  Future<Result> stopMediaDevices() async {
     if (_state != MediaDeviceState.running) {
       return const Failure(CallError.notRunning, ErrorSource.mediaDevice);
     }
     _stopTracks();
+    await _localStream?.dispose();
     _localStream = null;
     _state = MediaDeviceState.stopped;
     _streamController.add(null);
@@ -137,16 +138,16 @@ class MediaDeviceService {
   }
 
   Future<Result> restartMediaDevices({MediaDeviceConfig? config}) async {
-    if (_state == MediaDeviceState.running) stopMediaDevices();
+    if (_state == MediaDeviceState.running) await stopMediaDevices();
     return startMediaDevices(config: config);
   }
 
-  void dispose() {
+  Future<void> dispose() async {
     _stopTracks();
-    _localStream?.dispose();
+    await _localStream?.dispose();
     _localStream = null;
     _state = MediaDeviceState.idle;
-    _streamController.close();
+    await _streamController.close();
   }
 
   Result setAudioEnabled(bool enabled) {
@@ -258,8 +259,9 @@ class MediaDeviceService {
     Map<String, dynamic> constraints,
     String kind,
   ) async {
+    MediaStream? tempStream;
     try {
-      final tempStream = await navigator.mediaDevices.getUserMedia(constraints);
+      tempStream = await navigator.mediaDevices.getUserMedia(constraints);
       final newTrack = tempStream.getTracks().first;
 
       final oldTrack = _localStream!
@@ -275,8 +277,10 @@ class MediaDeviceService {
       await _localStream!.addTrack(newTrack);
       _streamController.add(_localStream);
 
+      await tempStream.dispose();
       return const Success(null);
     } catch (e) {
+      await tempStream?.dispose();
       final message = e.toString().toLowerCase();
       final error =
           _errorMap.entries

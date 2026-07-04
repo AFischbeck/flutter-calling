@@ -9,13 +9,13 @@ class Peer {
     required Stream<MediaStream?> localStreamChanges,
     this.onDisconnected,
   }) {
-    _localStreamSubscription = localStreamChanges.listen((stream) async {
-      await updateLocalStream(stream, peerConnection);
+    _localStreamSubscription = localStreamChanges.listen((stream) {
+      updateLocalStream(stream, peerConnection).catchError((_) {});
     });
 
     peerConnection.onTrack = (event) {
       remoteStream = event.streams.firstOrNull;
-      _remoteStreamController.add(event.streams.firstOrNull);
+      _remoteStreamController.add(remoteStream);
     };
 
     peerConnection.onConnectionState = (state) {
@@ -35,9 +35,9 @@ class Peer {
   Stream<MediaStream?> get remoteStreamChanges =>
       _remoteStreamController.stream;
 
-  void dispose() {
-    peerConnection.close();
-    _localStreamSubscription.cancel();
-    _remoteStreamController.close();
+  Future<void> dispose() async {
+    await peerConnection.dispose();
+    await _localStreamSubscription.cancel();
+    await _remoteStreamController.close();
   }
 }

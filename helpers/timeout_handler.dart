@@ -10,14 +10,14 @@ class TimeoutHandler {
   }
 
   final Duration timeout;
-  final void Function() onTimeout;
+  final FutureOr<void> Function() onTimeout;
   final void Function()? onDispose;
 
   bool _disposed = false;
   Timer? _timer;
 
-  void _onTimeout() {
-    onTimeout();
+  Future<void> _onTimeout() async {
+    await onTimeout();
     dispose();
   }
 
