@@ -9,8 +9,8 @@ class Peer {
     required Stream<MediaStream?> localStreamChanges,
     this.onDisconnected,
   }) {
-    _localStreamSubscription = localStreamChanges.listen((stream) async {
-      await updateLocalStream(stream, peerConnection);
+    _localStreamSubscription = localStreamChanges.listen((stream) {
+      updateLocalStream(stream, peerConnection).catchError((_) {});
     });
 
     peerConnection.onTrack = (event) {

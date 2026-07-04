@@ -60,13 +60,17 @@ class WebRtcManager {
     _iceCandidateManager.startListening();
 
     _offerSubscription = transientService.offerStream.listen((offer) async {
-      //TODO: this returns an result, needs error handling
-      await _onOfferReceived(
+      final result = await _onOfferReceived(
         transientService,
         offer,
         localStream,
         localStreamChanges,
       );
+      if (result is Failure) {
+        notifyError?.call(
+          "Failed to process offer from ${offer.from}: ${result.error.name}",
+        );
+      }
     });
 
     _peerDisconnectedSubscription = transientService.peerDisconnectedStream

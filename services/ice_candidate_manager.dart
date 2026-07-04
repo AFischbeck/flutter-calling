@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:collection';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import '../models/result.dart';
 import '../models/signaling_payload.dart';
 import 'transient_service.dart';
 
@@ -28,11 +30,10 @@ class IceCandidateManager {
     String myId,
     String peerId,
   ) {
-    // TODO: Error handling
     return (RTCIceCandidate candidate) async {
       if (candidate.candidate?.isNotEmpty != true) return;
 
-      await _transientService.sendPayload(
+      final result = await _transientService.sendPayload(
         'ice_candidate',
         IceCandidatePayload(
           candidate: candidate.candidate,
@@ -42,19 +43,26 @@ class IceCandidateManager {
           to: peerId,
         ),
       );
+      if (result is Failure) {
+        debugPrint('Failed to send ICE candidate: ${result.error.name}');
+      }
     };
   }
 
   Future<void> _onRemoteIceCandidateReceived(
     IceCandidatePayload candidate,
   ) async {
-    final peerConnection = _lookupPeerConnection(candidate.from);
-    if (peerConnection != null) {
-      await peerConnection.addCandidate(candidate.toRTCIceCandidate());
-    } else {
-      _pendingCandidates
-          .putIfAbsent(candidate.from, () => Queue())
-          .addLast(candidate);
+    try {
+      final peerConnection = _lookupPeerConnection(candidate.from);
+      if (peerConnection != null) {
+        await peerConnection.addCandidate(candidate.toRTCIceCandidate());
+      } else {
+        _pendingCandidates
+            .putIfAbsent(candidate.from, () => Queue())
+            .addLast(candidate);
+      }
+    } catch (e) {
+      debugPrint('Error processing remote ICE candidate: $e');
     }
   }
 
