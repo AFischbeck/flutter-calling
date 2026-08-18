@@ -26,7 +26,7 @@ class PendingAnswer {
         'Timed out waiting for answer from $peerId. Retry attempt $attempt/$max.',
       ),
       onOperationFailed: (message) =>
-          notifyError?.call('Error: $message for $peerId'),
+          notifyError?.call('Could not connect to $peerId ($message).'),
       onDispose: () => removeSelf(this),
     );
   }

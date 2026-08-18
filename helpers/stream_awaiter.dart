@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../models/result.dart';
+import 'logging.dart';
 import 'timeout_handler.dart';
 
 class StreamAwaiter<T> {
@@ -35,10 +36,27 @@ class StreamAwaiter<T> {
   TimeoutHandler? _handler;
 
   Future<void> _start() async {
-    final result = await initialOperation();
+    Result result;
+    try {
+      result = await initialOperation();
+    } catch (e, st) {
+      logError(
+        "Stream awaiter initial operation failed",
+        error: e,
+        stackTrace: st,
+      );
+      onOperationFailed?.call(e.toString());
+      await dispose();
+      return;
+    }
     if (_disposed) return;
     if (result is Failure) {
-      onOperationFailed?.call('Stream awaiter operation failed.');
+      logError(
+        "Stream awaiter operation failed: ${result.error.name}",
+        error: result.details,
+        stackTrace: result.stackTrace,
+      );
+      onOperationFailed?.call(result.error.name);
       await dispose();
       return;
     }
@@ -52,13 +70,21 @@ class StreamAwaiter<T> {
 
   Future<void> _handleEvent(T event) async {
     if (_disposed) return;
-    onEvent(event);
+    try {
+      onEvent(event);
+    } catch (e, st) {
+      logError("Error handling awaited event", error: e, stackTrace: st);
+    }
     await dispose();
   }
 
   Future<void> _onTimeout() async {
     if (_retryCount >= maxRetries) {
-      onFinalTimeout();
+      try {
+        onFinalTimeout();
+      } catch (e, st) {
+        logError("Error handling final timeout", error: e, stackTrace: st);
+      }
       await dispose();
       return;
     }

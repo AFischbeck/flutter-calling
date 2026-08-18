@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:collection';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import '../helpers/logging.dart';
 import '../models/result.dart';
 import '../models/signaling_payload.dart';
 import 'transient_service.dart';
@@ -31,20 +31,28 @@ class IceCandidateManager {
     String peerId,
   ) {
     return (RTCIceCandidate candidate) async {
-      if (candidate.candidate?.isNotEmpty != true) return;
+      try {
+        if (candidate.candidate?.isNotEmpty != true) return;
 
-      final result = await _transientService.sendPayload(
-        'ice_candidate',
-        IceCandidatePayload(
-          candidate: candidate.candidate,
-          sdpMid: candidate.sdpMid,
-          sdpMLineIndex: candidate.sdpMLineIndex,
-          from: myId,
-          to: peerId,
-        ),
-      );
-      if (result is Failure) {
-        debugPrint('Failed to send ICE candidate: ${result.error.name}');
+        final result = await _transientService.sendPayload(
+          'ice_candidate',
+          IceCandidatePayload(
+            candidate: candidate.candidate,
+            sdpMid: candidate.sdpMid,
+            sdpMLineIndex: candidate.sdpMLineIndex,
+            from: myId,
+            to: peerId,
+          ),
+        );
+        if (result is Failure) {
+          logError(
+            "Failed to send ICE candidate to $peerId: ${result.error.name}",
+            error: result.details,
+            stackTrace: result.stackTrace,
+          );
+        }
+      } catch (e, st) {
+        logError("Failed to send ICE candidate", error: e, stackTrace: st);
       }
     };
   }
@@ -61,8 +69,12 @@ class IceCandidateManager {
             .putIfAbsent(candidate.from, () => Queue())
             .addLast(candidate);
       }
-    } catch (e) {
-      debugPrint('Error processing remote ICE candidate: $e');
+    } catch (e, st) {
+      logError(
+        "Error processing remote ICE candidate from ${candidate.from}",
+        error: e,
+        stackTrace: st,
+      );
     }
   }
 

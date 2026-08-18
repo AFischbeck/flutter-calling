@@ -1,6 +1,7 @@
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../models/ice_server_config.dart';
 import '../models/result.dart';
+import 'logging.dart';
 
 const List<IceServerConfig> kDefaultStunServers = [
   IceServerConfig(urls: ['stun:stun1.l.google.com:19302']),
@@ -13,7 +14,7 @@ const _errorMap = {
   'invalidstate': CallError.peerConnectionFailed,
 };
 
-Failure<T> _mapError<T>(Object e) {
+Failure<T> _mapError<T>(Object e, [StackTrace? st]) {
   final message = e.toString().toLowerCase();
   final error = _errorMap.entries
       .firstWhere(
@@ -21,7 +22,12 @@ Failure<T> _mapError<T>(Object e) {
         orElse: () => MapEntry('', CallError.unknown),
       )
       .value;
-  return Failure<T>(error, ErrorSource.webRtc);
+  return Failure<T>(
+    error,
+    ErrorSource.webRtc,
+    details: e.toString(),
+    stackTrace: st,
+  );
 }
 
 Future<Result<RTCPeerConnection>> initializePeerConnection(
@@ -34,9 +40,10 @@ Future<Result<RTCPeerConnection>> initializePeerConnection(
     await updateLocalStream(localStream, peerConnection);
 
     return Success(peerConnection);
-  } catch (e) {
+  } catch (e, st) {
+    logError("Failed to initialize peer connection", error: e, stackTrace: st);
     await peerConnection?.dispose();
-    return _mapError(e);
+    return _mapError(e, st);
   }
 }
 
@@ -48,8 +55,9 @@ Future<Result<RTCSessionDescription>> createOffer(
     await peerConnection.setLocalDescription(offer);
 
     return Success(offer);
-  } catch (e) {
-    return _mapError(e);
+  } catch (e, st) {
+    logError("Failed to create offer", error: e, stackTrace: st);
+    return _mapError(e, st);
   }
 }
 
@@ -61,8 +69,9 @@ Future<Result<RTCSessionDescription>> createAnswer(
     await peerConnection.setLocalDescription(answer);
 
     return Success(answer);
-  } catch (e) {
-    return _mapError(e);
+  } catch (e, st) {
+    logError("Failed to create answer", error: e, stackTrace: st);
+    return _mapError(e, st);
   }
 }
 

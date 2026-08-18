@@ -10,7 +10,9 @@ final class Success<T> extends Result<T> {
 final class Failure<T> extends Result<T> {
   final CallError error;
   final ErrorSource source;
-  const Failure(this.error, this.source);
+  final String? details;
+  final StackTrace? stackTrace;
+  const Failure(this.error, this.source, {this.details, this.stackTrace});
 }
 
 enum ErrorSource { mediaDevice, transient, webRtc }

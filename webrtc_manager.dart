@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'helpers/logging.dart';
 import 'helpers/retry_helper.dart';
 import 'helpers/webrtc_helpers.dart';
 import 'models/ice_server_config.dart';
@@ -36,6 +37,8 @@ class WebRtcManager {
   final Set<PendingAnswer> _pendingAnswers = {};
 
   final Map<String, Peer> _peers = {};
+  final Set<RTCPeerConnection> _inFlightConnections = {};
+  bool _disposed = false;
   final _peersController = StreamController<Map<String, Peer>>.broadcast();
   StreamSubscription<String>? _peerDisconnectedSubscription;
 
@@ -60,16 +63,26 @@ class WebRtcManager {
     _iceCandidateManager.startListening();
 
     _offerSubscription = transientService.offerStream.listen((offer) async {
-      final result = await _onOfferReceived(
-        transientService,
-        offer,
-        localStream,
-        localStreamChanges,
-      );
-      if (result is Failure) {
-        notifyError?.call(
-          "Failed to process offer from ${offer.from}: ${result.error.name}",
+      try {
+        final result = await _onOfferReceived(
+          transientService,
+          offer,
+          localStream,
+          localStreamChanges,
         );
+        if (result is Failure) {
+          logError(
+            "Failed to process offer from ${offer.from}: ${result.error.name}",
+            error: result.details,
+            stackTrace: result.stackTrace,
+          );
+          notifyError?.call(
+            "Failed to process offer from ${offer.from}: ${result.error.name}",
+          );
+        }
+      } catch (e, st) {
+        logError("Failed to process offer", error: e, stackTrace: st);
+        notifyError?.call("Failed to process offer from ${offer.from}.");
       }
     });
 
@@ -142,13 +155,19 @@ class WebRtcManager {
 
     final RTCPeerConnection peerConnection =
         (peerConnectionResult as Success).value;
+    _inFlightConnections.add(peerConnection);
+
+    if (_disposed) {
+      await _releaseInFlightConnection(peerConnection);
+      return Failure(CallError.aborted, ErrorSource.webRtc);
+    }
 
     peerConnection.onIceCandidate = _iceCandidateManager
         .createOnIceCandidateCallback(myId, peerId);
 
     final offerCreationResult = await createOffer(peerConnection);
     if (offerCreationResult is Failure) {
-      await peerConnection.dispose();
+      await _releaseInFlightConnection(peerConnection);
       return offerCreationResult;
     }
 
@@ -161,8 +180,12 @@ class WebRtcManager {
 
     final offerSendResult = await transientService.sendPayload('offer', offer);
     if (offerSendResult is Failure) {
-      await peerConnection.dispose();
+      await _releaseInFlightConnection(peerConnection);
       return offerSendResult;
+    }
+
+    if (!_inFlightConnections.remove(peerConnection)) {
+      return Failure(CallError.aborted, ErrorSource.webRtc);
     }
 
     await _removePeer(peerId);
@@ -189,6 +212,12 @@ class WebRtcManager {
 
     final RTCPeerConnection peerConnection =
         (peerConnectionResult as Success).value;
+    _inFlightConnections.add(peerConnection);
+
+    if (_disposed) {
+      await _releaseInFlightConnection(peerConnection);
+      return Failure(CallError.aborted, ErrorSource.webRtc);
+    }
 
     peerConnection.onIceCandidate = _iceCandidateManager
         .createOnIceCandidateCallback(transientService.id, offer.from);
@@ -205,18 +234,19 @@ class WebRtcManager {
       );
     } catch (e) {
       if (peer != null) {
-        await peer.dispose();
+        await _releaseInFlightPeer(peer);
       } else {
-        await peerConnection.dispose();
+        await _releaseInFlightConnection(peerConnection);
       }
       return Failure(CallError.peerConnectionFailed, ErrorSource.webRtc);
     }
 
     final createAnswerResult = await createAnswer(peerConnection);
     if (createAnswerResult is Failure) {
-      await peer.dispose();
+      await _releaseInFlightPeer(peer);
       return createAnswerResult;
     }
+
     final RTCSessionDescription rtcSessionDescription =
         (createAnswerResult as Success).value;
 
@@ -231,7 +261,7 @@ class WebRtcManager {
       answer,
     );
     if (sendAnswerResult is Failure) {
-      await peer.dispose();
+      await _releaseInFlightPeer(peer);
       return sendAnswerResult;
     }
 
@@ -241,8 +271,13 @@ class WebRtcManager {
         offer.from,
       );
     } catch (e) {
-      await peer.dispose();
+      await _releaseInFlightPeer(peer);
       return Failure(CallError.peerConnectionFailed, ErrorSource.webRtc);
+    }
+
+    if (!_inFlightConnections.remove(peerConnection)) {
+      await _releaseInFlightPeer(peer);
+      return Failure(CallError.aborted, ErrorSource.webRtc);
     }
 
     await _removePeer(offer.from);
@@ -257,8 +292,38 @@ class WebRtcManager {
     if (peer == null) return;
 
     _iceCandidateManager.clearPendingCandidates(peerId);
-    await peer.dispose();
-    _peersController.add(Map.unmodifiable(_peers));
+    try {
+      await peer.dispose();
+    } catch (e, st) {
+      logError("Failed to dispose peer $peerId", error: e, stackTrace: st);
+    }
+    try {
+      _peersController.add(Map.unmodifiable(_peers));
+    } catch (e, st) {
+      logError("Failed to emit peers update", error: e, stackTrace: st);
+    }
+  }
+
+  Future<void> _releaseInFlightConnection(RTCPeerConnection connection) async {
+    if (!_inFlightConnections.remove(connection)) return;
+    try {
+      await connection.dispose();
+    } catch (e, st) {
+      logError(
+        "Failed to dispose in-flight connection",
+        error: e,
+        stackTrace: st,
+      );
+    }
+  }
+
+  Future<void> _releaseInFlightPeer(Peer peer) async {
+    _inFlightConnections.remove(peer.peerConnection);
+    try {
+      await peer.dispose();
+    } catch (e, st) {
+      logError("Failed to dispose in-flight peer", error: e, stackTrace: st);
+    }
   }
 
   Future<void> _onAnswerReceived(SignalingSdp answer) async {
@@ -273,23 +338,37 @@ class WebRtcManager {
         peer.peerConnection,
         answer.from,
       );
-    } catch (e) {
+    } catch (e, st) {
+      logError(
+        "Failed to process answer from ${answer.from}",
+        error: e,
+        stackTrace: st,
+      );
       await _removePeer(answer.from);
     }
   }
 
   Future<void> dispose() async {
-    final peerIds = _peers.keys.toList();
-    for (final peerId in peerIds) {
-      await _removePeer(peerId);
+    if (_disposed) return;
+    _disposed = true;
+    try {
+      final peerIds = _peers.keys.toList();
+      for (final peerId in peerIds) {
+        await _removePeer(peerId);
+      }
+      for (final pendingAnswer in _pendingAnswers.toList()) {
+        await pendingAnswer.dispose();
+      }
+      _pendingAnswers.clear();
+      await _offerSubscription?.cancel();
+      await _peerDisconnectedSubscription?.cancel();
+      for (final connection in _inFlightConnections.toList()) {
+        await _releaseInFlightConnection(connection);
+      }
+      await _iceCandidateManager.dispose();
+      await _peersController.close();
+    } catch (e, st) {
+      logError("Failed to dispose WebRTC manager", error: e, stackTrace: st);
     }
-    for (final pendingAnswer in _pendingAnswers.toList()) {
-      await pendingAnswer.dispose();
-    }
-    _pendingAnswers.clear();
-    await _offerSubscription?.cancel();
-    await _peerDisconnectedSubscription?.cancel();
-    await _iceCandidateManager.dispose();
-    await _peersController.close();
   }
 }
