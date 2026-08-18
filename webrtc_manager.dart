@@ -15,16 +15,14 @@ import 'services/transient_service.dart';
 
 class WebRtcManager {
   WebRtcManager({
-    List<IceServerConfig>? stunServers,
-    List<IceServerConfig>? turnServers,
+    List<IceServerConfig>? iceServers,
     this.notifyWarning,
     this.notifyError,
   }) : _iceServers = [
-         ...(stunServers != null && stunServers.isNotEmpty
-                 ? stunServers
+         ...(iceServers != null && iceServers.isNotEmpty
+                 ? iceServers
                  : kDefaultStunServers)
              .map((s) => s.toMap()),
-         if (turnServers != null) ...turnServers.map((s) => s.toMap()),
        ];
 
   final List<Map<String, dynamic>> _iceServers;
